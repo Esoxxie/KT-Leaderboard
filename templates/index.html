@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kill Tony Leaderboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div style="text-align:center; margin-bottom: 18px;">
+            <img src="/static/656e4a5653f53f00a76bd2a3.png" alt="Kill Tony Logo" style="max-width:340px; width:100%; height:auto; display:block; margin:0 auto 18px auto;">
+        </div>
+        <h1>Guest Leaderboard</h1>
+        <div class="tab-bar">
+            <button id="tab-guests" class="tab-btn active">Total Views</button>
+            <button id="tab-guests-avg" class="tab-btn">Average Views</button>
+        </div>
+        <div class="tab-description" id="desc-total-views">
+            Guests ranked by the sum of all their episode views.
+        </div>
+        <div class="tab-description" id="desc-avg-views" style="display:none">
+            Guests ranked by the average views per episode (min. 2 appearances).
+        </div>
+        <div id="loading-spinner" style="display:none;justify-content:center;align-items:center;margin:32px 0;">
+            <div class="spinner"></div>
+        </div>
+        <div id="leaderboard"></div>
+    </div>
+    <script>
+        function setActiveTab(tab) {
+            document.getElementById('tab-guests').classList.remove('active');
+            document.getElementById('tab-guests-avg').classList.remove('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+            // Show only the relevant tab description
+            if (tab === 'guests') {
+                document.getElementById('desc-total-views').style.display = '';
+                document.getElementById('desc-avg-views').style.display = 'none';
+            } else if (tab === 'guests-avg') {
+                document.getElementById('desc-total-views').style.display = 'none';
+                document.getElementById('desc-avg-views').style.display = '';
+            }
+        }
+
+        async function loadLeaderboard() {
+            setActiveTab('videos');
+            const res = await fetch('/api/leaderboard');
+            const data = await res.json();
+            const boardDiv = document.getElementById('leaderboard');
+            if (data.error) {
+                boardDiv.innerHTML = `<p>${data.error}</p>`;
+                return;
+            }
+            let html = `<ol style="padding-left: 0;">`;
+            data.forEach((video, idx) => {
+                html += `
+                <li style="list-style: none; margin-bottom: 32px; padding: 16px; border-bottom: 1px solid #eee;">
+                    <div style="display: flex; align-items: flex-start;">
+                        <a href="https://www.youtube.com/watch?v=${video.videoId}" target="_blank">
+                            <img src="${video.thumbnail}" alt="Video thumbnail" style="width: 120px; border-radius: 8px; margin-right: 18px;">
+                        </a>
+                        <div>
+                            <div class="video-title" style="font-size: 1.1em; font-weight: bold; margin-bottom: 6px;">
+                                #${idx+1} <a href="https://www.youtube.com/watch?v=${video.videoId}" target="_blank" style="color:#e52d27;text-decoration:none;">${video.title}</a>
+                            </div>
+                            <div class="video-views" style="color:#888; margin-bottom:8px;">${parseInt(video.viewCount).toLocaleString()} views</div>
+                            <div class="video-desc" style="color:#444;">${video.description}</div>
+                        </div>
+                    </div>
+                </li>`;
+            });
+            html += `</ol>`;
+            boardDiv.innerHTML = html;
+        }
+
+        let guestLeaderboardData = [];
+        let guestLeaderboardShown = 10;
+        const GUESTS_PER_PAGE = 10;
+
+        async function loadGuestLeaderboard() {
+            setActiveTab('guests');
+            const res = await fetch('/api/guest-leaderboard');
+            const data = await res.json();
+            guestLeaderboardData = data;
+            guestLeaderboardShown = 10;
+            renderGuestLeaderboard();
+        }
+
+        function renderGuestLeaderboard() {
+            const boardDiv = document.getElementById('leaderboard');
+            if (!Array.isArray(guestLeaderboardData)) {
+                boardDiv.innerHTML = `<p>No guest data found.</p>`;
+                return;
+            }
+            let html = '<div class="guest-leaderboard-list">';
+            for (let i = 0; i < guestLeaderboardShown && i < guestLeaderboardData.length; i++) {
+                const guest = guestLeaderboardData[i];
+                html += `<div class="guest-leaderboard-item">
+    <div class="guest-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="guest-rank">${i+1}.</span>
+        <span class="guest-name">${guest.guest}</span>
+        <span class="guest-total-views">${guest.total_views.toLocaleString()} views</span>
+        <span class='spacer'></span>`;
+                if (i === 0 || i === 1 || i === 2) {
+                    const trophyEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+                    html += `<span class="trophy-emoji-container" style="font-size: 24px; margin-left: 12px;"><span class="trophy-emoji">${trophyEmoji}</span></span>`;
+                } else {
+                    html += `<span class="trophy-emoji-container"></span>`;
+                }
+                html += `</div>
+    <ul class="guest-episodes-list">`;
+                guest.episodes.forEach(ep => {
+                    html += `<li class="guest-episode-item"><a href="https://www.youtube.com/watch?v=${ep.videoId}" target="_blank" class="guest-episode-link">${ep.title}</a> <span class="guest-episode-views">(${ep.viewCount.toLocaleString()} views)</span></li>`;
+                });
+                html += '</ul></div>';
+            }
+            html += '</div>';
+            boardDiv.innerHTML = html;
+            if (guestLeaderboardShown < guestLeaderboardData.length) {
+                html += `<button id="load-more-guests" class="load-more-btn">Load More</button>`;
+                boardDiv.innerHTML = html;
+                document.getElementById('load-more-guests').onclick = function() {
+                    guestLeaderboardShown += GUESTS_PER_PAGE;
+                    renderGuestLeaderboard();
+                };
+            }
+        }
+
+        
+        document.getElementById('tab-guests').onclick = loadGuestLeaderboard;
+        document.getElementById('tab-guests-avg').onclick = loadGuestLeaderboardByAvgViews;
+        loadGuestLeaderboard();
+
+        async function loadGuestLeaderboardByAvgViews() {
+            setActiveTab('guests-avg');
+            if (!guestLeaderboardData.length) {
+                const res = await fetch('/api/guest-leaderboard');
+                const data = await res.json();
+                guestLeaderboardData = data;
+            }
+            guestLeaderboardShown = 10;
+            renderGuestLeaderboardByAvgViews();
+        }
+
+        function renderGuestLeaderboardByAvgViews() {
+            const boardDiv = document.getElementById('leaderboard');
+            if (!Array.isArray(guestLeaderboardData)) {
+                boardDiv.innerHTML = `<p>No guest data found.</p>`;
+                return;
+            }
+            // Filter out invalid guest names and empty episode lists
+            const filtered = guestLeaderboardData.filter(g => g.episodes && g.episodes.length >= 2 && !/^KT #/i.test(g.guest));
+            // Sort by average views per episode (descending)
+            const sorted = [...filtered].sort((a, b) => (b.total_views / b.episodes.length) - (a.total_views / a.episodes.length));
+            let html = '<div class="guest-leaderboard-list">';
+            for (let i = 0; i < guestLeaderboardShown && i < sorted.length; i++) {
+                const guest = sorted[i];
+                const avgViews = Math.round(guest.total_views / guest.episodes.length);
+                html += `<div class="guest-leaderboard-item">
+    <div class="guest-header">
+        <span class="guest-rank">${i+1}.</span>
+        <span class="guest-name">${guest.guest}</span>
+        <span class="guest-total-views">${avgViews.toLocaleString()} avg views</span>
+        <span class='spacer'></span>
+        ${(i === 0 || i === 1 || i === 2) ? `<span class='trophy-emoji-container'><span class='trophy-emoji'>${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span></span>` : `<span class='trophy-emoji-container'></span>`}
+    </div>
+    <ul class="guest-episodes-list">
+`;
+                guest.episodes.forEach(ep => {
+                    html += `<li class="guest-episode-item"><a href="https://www.youtube.com/watch?v=${ep.videoId}" target="_blank" class="guest-episode-link">${ep.title}</a> <span class="guest-episode-views">(${ep.viewCount.toLocaleString()} views)</span></li>`;
+                });
+                html += '</ul></div>';
+            }
+            html += '</div>';
+            boardDiv.innerHTML = html;
+            if (guestLeaderboardShown < sorted.length) {
+                html += `<button id="load-more-guests-avg" class="load-more-btn">Load More</button>`;
+                boardDiv.innerHTML = html;
+                document.getElementById('load-more-guests-avg').onclick = function() {
+                    guestLeaderboardShown += GUESTS_PER_PAGE;
+                    renderGuestLeaderboardByAvgViews();
+                };
+            }
+        }
+        // Spinner control helpers
+        function showSpinner() {
+            document.getElementById('loading-spinner').style.display = 'flex';
+        }
+        function hideSpinner() {
+            document.getElementById('loading-spinner').style.display = 'none';
+        }
+
+        // Patch leaderboard loading to show spinner
+        const origLoadGuestLeaderboard = loadGuestLeaderboard;
+        loadGuestLeaderboard = async function() {
+            showSpinner();
+            await origLoadGuestLeaderboard();
+            hideSpinner();
+        }
+        const origLoadGuestLeaderboardByAvgViews = loadGuestLeaderboardByAvgViews;
+        loadGuestLeaderboardByAvgViews = async function() {
+            showSpinner();
+            await origLoadGuestLeaderboardByAvgViews();
+            hideSpinner();
+        }
+    </script>
+    <style>
+    .spinner {
+      border: 5px solid #232323;
+      border-top: 5px solid #c22026;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      animation: spin 1.1s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    </style>
+    <style>
+        .tab-btn {
+            background: #eee;
+            border: none;
+            padding: 10px 18px;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 6px 6px 0 0;
+            transition: background 0.2s;
+        }
+        .tab-btn.active {
+            background: #e52d27;
+            color: #fff;
+            font-weight: bold;
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,12 @@
+[build]
+  publish = "static"
+  command = "echo No build step required"
+
+[dev]
+  command = "python app.py"
+  port = 5000
+
+[[redirects]]
+  from = "/api/*"
+  to = "/api/:splat"
+  status = 200
