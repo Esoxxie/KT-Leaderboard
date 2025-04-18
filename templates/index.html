@@ -108,6 +108,7 @@
                     html += `<span class="trophy-emoji-container"></span>`;
                 }
                 html += `</div>
+    <button class="toggle-episodes-btn">Show Episodes</button>
     <ul class="guest-episodes-list">`;
                 guest.episodes.forEach(ep => {
                     html += `<li class="guest-episode-item"><a href="https://www.youtube.com/watch?v=${ep.videoId}" target="_blank" class="guest-episode-link">${ep.title}</a> <span class="guest-episode-views">(${ep.viewCount.toLocaleString()} views)</span></li>`;
@@ -124,6 +125,15 @@
                     renderGuestLeaderboard();
                 };
             }
+            // Attach toggle handlers for episode buttons
+            document.querySelectorAll('.toggle-episodes-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const ul = btn.nextElementSibling;
+                    const isVisible = ul.style.display === 'block';
+                    ul.style.display = isVisible ? 'none' : 'block';
+                    btn.textContent = isVisible ? 'Show Episodes' : 'Hide Episodes';
+                });
+            });
         }
 
         
@@ -164,6 +174,7 @@
         <span class='spacer'></span>
         ${(i === 0 || i === 1 || i === 2) ? `<span class='trophy-emoji-container'><span class='trophy-emoji'>${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span></span>` : `<span class='trophy-emoji-container'></span>`}
     </div>
+    <button class="toggle-episodes-btn">Show Episodes</button>
     <ul class="guest-episodes-list">
 `;
                 guest.episodes.forEach(ep => {
@@ -181,6 +192,15 @@
                     renderGuestLeaderboardByAvgViews();
                 };
             }
+            // Attach toggle handlers for episode buttons
+            document.querySelectorAll('.toggle-episodes-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const ul = btn.nextElementSibling;
+                    const isVisible = ul.style.display === 'block';
+                    ul.style.display = isVisible ? 'none' : 'block';
+                    btn.textContent = isVisible ? 'Show Episodes' : 'Hide Episodes';
+                });
+            });
         }
         // Spinner control helpers
         function showSpinner() {
